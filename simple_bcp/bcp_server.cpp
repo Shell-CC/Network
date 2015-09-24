@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
    */
   status = bind(serv_sockfd, serv_info->ai_addr, serv_info->ai_addrlen);
   if (status < 0) {
-    std::cout << "ERROR BINDING: " << strerror(errno) << std::endl;
+    std::cout << "ERROR BINDING: " << std::endl;
     return -1;
   }
   inet_ntop(serv_info->ai_family, get_in_addr(serv_info->ai_addr), serv_ip, sizeof(serv_ip));
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
   freeaddrinfo(serv_info);
   status = listen(serv_sockfd, max_clients);
   if (status < 0) {
-    std::cout << "ERROR LISTENING: " << strerror(errno) << std::endl;
+    std::cout << "ERROR LISTENING: " << std::endl;
     return -1;
   }
   std::cout << "Listening..." << std::endl;

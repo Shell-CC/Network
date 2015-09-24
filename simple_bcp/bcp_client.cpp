@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
    */
   status = connect(client_sockfd, serv_info->ai_addr, serv_info->ai_addrlen);
   if (status < 0) {
-    std::cout << "ERROR CONNECTING: " << strerror(errno) << std::endl;
+    std::cout << "ERROR CONNECTING: " << std::endl;
     return -1;
   }
   inet_ntop(serv_info->ai_family, get_in_addr(serv_info->ai_addr), serv_ip, sizeof(serv_ip));
