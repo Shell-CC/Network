@@ -1,10 +1,13 @@
 #include <iostream>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "http_msg.h"
+#include "process.h"
 
 int main(int argc, char *argv[])
 {
@@ -52,8 +55,22 @@ int main(int argc, char *argv[])
 
   /* Send get request to proxy server */
   url = string(argv[3]);
+  string msg = pack_header_get(url);
+  size_t len = msg.length();
+  std::cout << "Sending request...\n" << msg;
+  if (send(client_sockfd, msg.c_str(), len, 0) < 0) {
+    cout << "  ERROR SENDING" << endl;
+  }
+  std::cout << "Success!" << std::endl;
 
   /* Receive the file from proxy server */
+  string filename = "new";
+  FILE *fp = fopen(filename.c_str(), "w");
+  if (http_recv_write(client_sockfd, fp) < 0) {
+    std::cout << "ERROR RECEIVING" << std::endl;
+  }
+  std::cout << "Saved to file: " << filename << std::endl;
+  fclose(fp);
 
   close(client_sockfd);
   return 0;
