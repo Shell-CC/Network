@@ -16,10 +16,6 @@ unsigned short int get_in_port(struct sockaddr *sa) {
   }
 }
 
-bool cache_contains(struct url_req *req) {
-  return false;
-}
-
 int send_server_get(struct url_req *req) {
   int sockfd;
   int status;
@@ -106,6 +102,7 @@ int proxy_send(int sockfd, FILE *fp) {
   // send buffer
   char buf[1024];
   int rv;
+  std::cout << "Sending to client...";
   // read from file to buffer and send in a loop until done
   while ((rv = fread(buf, 1, sizeof(buf), fp)) > 0) {
     if (send(sockfd, buf, rv, 0) < 0) {
@@ -113,5 +110,22 @@ int proxy_send(int sockfd, FILE *fp) {
     }
     memset(buf, 0, sizeof(buf));
   }
+  std::cout << "Success!" << std::endl;
   return 1;
+}
+
+
+string parse_header(FILE *fp) {
+  char buf[1024];
+  string header = "";
+  size_t p = -1;
+  while (fread(buf, 1, sizeof(buf), fp) > 0) {
+    header = header + string(buf);
+    p = header.find("\r\n\r\n");
+    if (p != string::npos){
+      return header.substr(0, p);
+    }
+    memset(buf, 0, sizeof(buf));
+  }
+  return "";
 }
