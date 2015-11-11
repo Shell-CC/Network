@@ -1,4 +1,28 @@
 #include "process.h"
+string day[7]={
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+};
+
+string month[12]={
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+};
 
 void *get_in_addr(struct sockaddr *sa) {
   if (sa->sa_family == AF_INET) { // ipv4
@@ -16,7 +40,7 @@ unsigned short int get_in_port(struct sockaddr *sa) {
   }
 }
 
-int send_server_get(struct url_req *req) {
+int send_server_msg(struct url_req *req, string msg) {
   int sockfd;
   int status;
   // server info
@@ -60,11 +84,7 @@ int send_server_get(struct url_req *req) {
     return -1;
   }
   // send GET to server
-  string msg;
-  msg = string("GET ") + req->resc + string(" HTTP/1.0\r\n")
-    + string("Host: ") + req->host + string("\r\n")
-    + string("User-Agent: HTMLGET 1.0\r\n\r\n");
-  std::cout << "Sending HTTP request...\n" << msg;
+  std::cout << "Sending..." ;
   if (send(sockfd, msg.c_str(), msg.length(), 0) < 0) {
     close(sockfd);
     cout << "  ERROR SENDING" << endl;
@@ -75,16 +95,47 @@ int send_server_get(struct url_req *req) {
   return sockfd;
 }
 
+int send_server_get(struct url_req *req) {
+  string msg;
+  msg = string("GET ") + req->resc + string(" HTTP/1.0\r\n")
+    + string("Host: ") + req->host + string("\r\n\r\n");
+  std::cout << "Forwarding GET request to server..." << std::endl;
+  return send_server_msg(req, msg);
+}
+
+int send_server_conditional_get(struct url_req *req, time_t t) {
+  string msg;
+  msg = string("GET ") + req->resc + string(" HTTP/1.0\r\n")
+    + string("Host: ") + req->host + string("\r\n");
+  struct tm *timenow;
+  timenow = gmtime(&t);
+  char modified[64];
+  sprintf(modified, "%s, %02d %s %4d %02d:%02d:%02d GMT",
+          day[timenow->tm_wday].c_str(), timenow->tm_mday,
+          month[timenow->tm_mon].c_str(), timenow->tm_year+1900,
+          timenow->tm_hour,timenow->tm_min, timenow->tm_sec);
+  msg = msg + "If-modified-Since: " + string(modified) + "\r\n";
+  msg +=  "\r\n";
+  std::cout << "Forwarding conditional GET request to server..." << msg;
+  return send_server_msg(req, msg);
+}
+
 
 int http_recv_write(int sockfd, FILE *fp) {
   // receive buffer
   char buf[1024];
   int rv;
+  string header = "";
   // recv to buffer and write to file in a loop until done or error
   std::cout << "Receiving...";
   while (1) {
     memset(buf, 0, sizeof(buf));
     rv = recv(sockfd, buf, sizeof(buf), 0);
+    header = header + string(buf);
+    if (header.find("304 Not Modified") != string::npos) {
+      std::cout << "The requested page has not modified." << std::endl;
+      return 0;
+    }
     if (rv < 0) {
       std::cout << "ERROR RECEIVING: connection closed" << std::endl;
       return -1;

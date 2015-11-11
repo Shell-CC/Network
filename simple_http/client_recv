@@ -1,0 +1,11 @@
+HTTP/1.1 302 Found
+Location: https://www.facebook.com/
+X-FB-Stats-Contexts: : www
+X-FB-Stats-Contexts: : V3
+Vary: Accept-Encoding
+Content-Type: text/html
+X-FB-Debug: B2YefcKkSJEqtmpyxbASv8fEvVXf6wLpx7nD1qv2019Nyu2V2nzOzMcnq2fcXLQgW6U/fXFYAJnq9DhNwwMQBA==
+Date: Tue, 27 Oct 2015 21:42:51 GMT
+Connection: close
+Content-Length: 0
+

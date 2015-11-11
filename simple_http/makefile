@@ -10,4 +10,4 @@ http_msg.o: http_msg.cpp http_msg.h
 	g++ -Wall -c http_msg.cpp
 
 clean:
-	rm -f proxy client *.o
+	rm -f proxy client *.o cache*

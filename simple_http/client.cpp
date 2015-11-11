@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   std::cout << "Success!" << std::endl;
 
   /* Receive the file from proxy server */
-  string filename = "new";
+  string filename = "client_recv";
   FILE *fp = fopen(filename.c_str(), "w");
   if (http_recv_write(client_sockfd, fp) < 0) {
     std::cout << "ERROR RECEIVING" << std::endl;

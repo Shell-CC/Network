@@ -24,5 +24,7 @@ int http_recv_write(int sockfd, FILE *fp);
 
 int proxy_send(int sockfd, FILE *fp);
 
+int send_server_conditional_get(struct url_req *req, time_t t);
+
 string parse_header(FILE *fp);
 #endif /* PROCESS_H */

@@ -20,6 +20,7 @@ typedef struct cache_node {
   string page;
   string filename;
   time_t last_access;
+  bool noExpire;
   time_t expire;
   int has;
 }cache_node;
@@ -35,6 +36,17 @@ int cache_contains(struct url_req *req) {
     }
   }
   return -1;
+}
+
+bool has_expired(struct cache_node *n) {
+  if (n->noExpire) {
+    return false;
+  }
+  if (difftime(n->expire, time(0)) >= 0) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 int find_node() {
@@ -63,6 +75,9 @@ time_t parse_expire_time(string header){
   string exp="";
   if (expirePos != string::npos) {
     exp = header.substr(expirePos + 11);
+  } else {
+    std::cout << "Cant find expire time in header" << std::endl;
+    return 0;
   }
   expirePos = exp.find("\r\n");
   string final = "";
@@ -141,6 +156,7 @@ int main(int argc, char *argv[])
   FILE *fp;
   // lists
   std::map<int, int> cs_fd;
+  std::map<int, int> cs_ex;
   std::map<int, std::string> cs_domain;
   std::map<int, std::string> cs_page;
   int ci;
@@ -211,7 +227,7 @@ int main(int argc, char *argv[])
           if (ci >= 0) {
             // If in cache, check if it is expired
             std::cout << "Found in the cache, ";
-            if (difftime(cache[ci].expire, time(0)) >= 0) {
+            if (has_expired(&cache[ci]) == false) {
               // If not expired, get cache and send back
               std::cout << "and not expired." << std::endl;
               fp = fopen(cache[ci].filename.c_str(), "r");
@@ -226,7 +242,7 @@ int main(int argc, char *argv[])
             } else {
               // If expired, send conditional GET to server.
               std::cout << "but expired." << std::endl;
-              int send_sockfd = send_server_get(&req);
+              int send_sockfd = send_server_conditional_get(&req, cache[ci].last_access);
               if (send_sockfd < 0) {
                 close(i);
                 FD_CLR(i, &client_fds);
@@ -234,11 +250,12 @@ int main(int argc, char *argv[])
                 continue;
               }
               cs_fd[send_sockfd] = i;
+              cs_ex[send_sockfd] = ci;
               cs_domain[send_sockfd] = std::string(req.host);
               cs_page[send_sockfd] = std::string(req.resc);
               FD_SET(send_sockfd, &all_fds);
               fdmax = send_sockfd > fdmax ? send_sockfd : fdmax;
-              // Update cache
+              // delete the node.
               cache[ci].has = 0;
             }
           } else {
@@ -260,20 +277,35 @@ int main(int argc, char *argv[])
         } else {
           /* handle receiving data from server */
           ci = find_node();
-          string filename = "cache" + std::to_string(ci);
+          char filename[10];
+          sprintf(filename, "cache%d", ci);
           // recive from server
-          fp = fopen(filename.c_str(), "w");
-          if (http_recv_write(i, fp) < 0) {
+          fp = fopen(filename, "w");
+          int rvc = http_recv_write(i, fp);
+          if (rvc< 0) {
             std::cout << "ERROR RECEIVING: try receiving later" << std::endl;
             fclose(fp);
             continue;
+          } else if (rvc == 0) {
+            fclose(fp);
+            ci = cs_ex[i];
+            memset(filename, 0, 10);
+            sprintf(filename, "cache%d", ci);
+            std::cout << "Sending " << filename << " back. " << std::endl;
+            fp = fopen(filename, "r");
+            proxy_send(cs_fd[i], fp);
+            fclose(fp);
+            cache[ci].last_access = time(0);
+            close(cs_fd[i]);
+            FD_CLR(cs_fd[i], &all_fds);
+            FD_CLR(cs_fd[i], &all_fds);
           }
           std::cout << "Save to cache: " << filename << std::endl;
           fclose(fp);
           close(i);
           FD_CLR(i, &all_fds);
           // get expire time
-          fp = fopen(filename.c_str(), "r");
+          fp = fopen(filename, "r");
           string header = parse_header(fp);
           time_t expire = parse_expire_time(header);
           // update cache
@@ -281,9 +313,12 @@ int main(int argc, char *argv[])
           cache[ci].domain = cs_domain[i];
           cache[ci].page = cs_page[i];
           cache[ci].filename = string(filename);
+          cache[ci].noExpire = expire == 0 ? true : false;
           cache[ci].expire = expire;
           cache[ci].last_access = time(0);
+          fclose(fp);
           // send to client
+          fp = fopen(filename, "r");
           int csockfd = cs_fd[i];
           proxy_send(csockfd, fp);
           fclose(fp);
